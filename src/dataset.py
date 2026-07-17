@@ -37,7 +37,7 @@ def encode_sequence(
 
 def load_protein_csv(
     csv_path: str,
-) -> Tuple[List[str], List[int]]:
+) -> Tuple[List[str], List[str]]:
     
     df = pd.read_csv(csv_path)
     
@@ -48,13 +48,13 @@ def load_protein_csv(
         )
         
     sequences = df['sequence'].astype(str).tolist()
-    labels = df['label'].astype(int).tolist()
+    labels = df['label'].astype(str).tolist()
     
     return sequences, labels
 
 def build_label_mapping(
-    labels: List[int],
-) -> Dict[int, int]:
+    labels: List[str],
+) -> Tuple[Dict[str, int], Dict[int, str]]:
     
     unique_labels = sorted(set(labels))
     
@@ -71,8 +71,8 @@ def build_label_mapping(
     return label_to_index, index_to_label
 
 def encode_labels(
-    labels: List[int],
-    label_to_index: Dict[int, int],
+    labels: List[str],
+    label_to_index: Dict[str, int],
 ) -> List[int]:
     
     return [
