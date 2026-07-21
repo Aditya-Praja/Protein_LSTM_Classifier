@@ -694,6 +694,8 @@ def main() -> None:
                 validation_loss=validation_loss,
                 label_to_index=label_to_index,
                 vocab=vocab,
+                embedding_dim=args.embedding_dim,
+                hidden_dim=args.hidden_dim,
                 model_path=args.model_path,
             )
             
