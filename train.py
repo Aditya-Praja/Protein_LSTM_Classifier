@@ -94,6 +94,13 @@ def parse_arguments() -> argparse.Namespace:
         default=42,
         help="Random seed for reproducibility.",
     )
+    
+    parser.add_argument(
+        "--model-path",
+        type=str,
+        default="models/best_protein_lstm.pth",
+        help="Path to save the best model.",
+    )
 
     return parser.parse_args()
 
@@ -544,6 +551,55 @@ def evaluate_model(
     
     return average_loss, accuracy
 
+def save_checkpoint(
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    validation_loss: float,
+    label_to_index: dict[str, int],
+    vocab: dict[str, int],
+    model_path: str,
+) -> None:
+    
+    path = Path(model_path)
+    
+    path.parent.mkdir(parents=True, exist_ok=True)
+    
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "epoch": epoch,
+        "validation_loss": validation_loss,
+        "label_to_index": label_to_index,
+        "vocab": vocab,
+    }
+    
+    torch.save(checkpoint, path)
+    
+def load_checkpoint(
+    model: nn.Module,
+    checkpoint_path: str,
+    device: torch.device,
+) -> dict:
+    
+    path = Path(checkpoint_path)
+    
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Checkpoint not found at: {path.resolve()}"
+        )
+    
+    checkpoint = torch.load(
+        str(path),
+        map_location=device
+    )
+    
+    model.load_state_dict(
+        checkpoint["model_state_dict"]
+    )
+    
+    return checkpoint
+    
 def main() -> None:
     args = parse_arguments()
 
@@ -682,6 +738,8 @@ def main() -> None:
     # --------------------------------------------------
 
     print("\nStarting training...\n")
+    
+    best_validation_loss = float("inf")
 
     for epoch in range(args.epochs):
         train_loss, train_accuracy = train_one_epoch(
@@ -710,7 +768,53 @@ def main() -> None:
             f"Validation Accuracy: "
             f"{validation_accuracy:.4f}"
         )
-
+        
+        if validation_loss < best_validation_loss:
+            best_validation_loss = validation_loss
+            
+            save_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                epoch=epoch + 1,
+                validation_loss=validation_loss,
+                label_to_index=label_to_index,
+                vocab=vocab,
+                model_path=args.model_path,
+            )
+            
+            print(
+                f"Best model saved at epoch "
+                f"{epoch + 1:02d} with "
+                f"validation loss: "
+                f"{validation_loss:.4f}"
+            )
+            
+    print("\nTraining complete.")
+    print(f"Best validation loss: {best_validation_loss:.4f}")
+    
+    best_model_checkpoint = load_checkpoint(
+        model=model,
+        checkpoint_path=args.model_path,
+        device=device,
+    )
+    
+    print(
+        f"Best model loaded from epoch "
+        f"{best_model_checkpoint['epoch']:02d} "
+        f"with validation loss: "
+        f"{best_model_checkpoint['validation_loss']:.4f}"
+    )
+    
+    test_loss, test_accuracy = evaluate_model(
+        model=model,
+        dataloader=test_dataloader,
+        loss_fn=loss_fn,
+        device=device,
+    )
+    
+    print("\nFinal evaluation on the test set:")
+    print(f"Test Loss: {test_loss:.4f} | Test Accuracy: {test_accuracy:.4f}")
+    
     # These will be used when validation and testing
     # are added to the training pipeline.
     _ = validation_dataloader
