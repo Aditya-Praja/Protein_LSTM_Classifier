@@ -24,6 +24,11 @@ class ProteinClassifier(nn.Module):
             batch_first=True
         )
         
+        self.classifer = nn.Linear(
+            in_features=hidden_dim,
+            out_features=output_dim
+        )
+        
     def forward(
         self,
         sequences: torch.Tensor,
@@ -43,4 +48,8 @@ class ProteinClassifier(nn.Module):
             packed_sequences
         )
         
-        return hidden_state
+        final_hidden_state = hidden_state[-1]
+        
+        logits = self.classifer(final_hidden_state)
+        
+        return logits
