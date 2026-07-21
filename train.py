@@ -17,6 +17,7 @@ from src.dataset import (
 )
 from src.model import ProteinClassifier
 from src.utils import set_random_seed
+from src.evalutation_utils import evaluate_model
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -491,66 +492,6 @@ def print_training_configuration(
     print(f"Test fraction: {args.test_fraction}")
     print(f"Random seed: {args.random_seed}")
 
-def evaluate_model(
-    model: nn.Module,
-    dataloader: DataLoader,
-    loss_fn: nn.Module,
-    device: torch.device,
-) -> tuple[float, float]:
-    """
-    Evaluate the model on a validation or test set.
-
-    Returns:
-        average_loss
-        accuracy
-    """
-
-    model.eval()
-    
-    total_loss = 0.0
-    total_correct = 0
-    total_examples = 0
-    
-    with torch.no_grad():
-        for sequences, sequence_lengths, labels in dataloader:
-            sequences = sequences.to(device)
-            labels = labels.to(device)
-            
-            logits = model(
-                sequences,
-                sequence_lengths,
-            )
-            
-            loss = loss_fn(
-                logits,
-                labels,
-            )
-            
-            batch_size = labels.size(0)
-            
-            total_loss += (
-                loss.item() * batch_size
-            )
-            
-            predictions = torch.argmax(
-                logits,
-                dim=1,
-            )
-            
-            total_correct += (
-                predictions == labels
-            ).sum().item()
-            total_examples += batch_size
-    if total_examples == 0:
-        raise ValueError(
-            "The DataLoader contains no examples."
-        )
-        
-    average_loss = ( total_loss / total_examples )
-    accuracy = ( total_correct / total_examples )
-    
-    return average_loss, accuracy
-
 def save_checkpoint(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -558,13 +499,17 @@ def save_checkpoint(
     validation_loss: float,
     label_to_index: dict[str, int],
     vocab: dict[str, int],
+    embedding_dim: int,
+    hidden_dim: int,
     model_path: str,
 ) -> None:
-    
     path = Path(model_path)
-    
-    path.parent.mkdir(parents=True, exist_ok=True)
-    
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
     checkpoint = {
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
@@ -572,33 +517,14 @@ def save_checkpoint(
         "validation_loss": validation_loss,
         "label_to_index": label_to_index,
         "vocab": vocab,
+        "embedding_dim": embedding_dim,
+        "hidden_dim": hidden_dim,
     }
-    
-    torch.save(checkpoint, path)
-    
-def load_checkpoint(
-    model: nn.Module,
-    checkpoint_path: str,
-    device: torch.device,
-) -> dict:
-    
-    path = Path(checkpoint_path)
-    
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Checkpoint not found at: {path.resolve()}"
-        )
-    
-    checkpoint = torch.load(
-        str(path),
-        map_location=device
+
+    torch.save(
+        checkpoint,
+        path,
     )
-    
-    model.load_state_dict(
-        checkpoint["model_state_dict"]
-    )
-    
-    return checkpoint
     
 def main() -> None:
     args = parse_arguments()
@@ -615,7 +541,6 @@ def main() -> None:
         args,
         device,
     )
-
 
     # Load raw sequences and prepare labels.
 
@@ -638,9 +563,7 @@ def main() -> None:
     )
     print(f"Label mapping: {label_to_index}")
 
-    
     # Split the raw sequences and labels.
-    # -------------------------------------------------
 
     (
         train_sequences,
@@ -705,9 +628,7 @@ def main() -> None:
         batch_size=args.batch_size,
     )
 
-    
     # Create the model.
-    
 
     model = create_model(
         vocab_size=len(vocab),
@@ -720,9 +641,7 @@ def main() -> None:
     print("\nModel architecture:")
     print(model)
 
-    
     # Create loss function and optimizer.
-    
 
     loss_fn = nn.CrossEntropyLoss()
 
@@ -731,9 +650,7 @@ def main() -> None:
         lr=args.learning_rate,
     )
 
-    
     # Train.
-    
 
     print("\nStarting training...\n")
     
@@ -789,29 +706,6 @@ def main() -> None:
             
     print("\nTraining complete.")
     print(f"Best validation loss: {best_validation_loss:.4f}")
-    
-    best_model_checkpoint = load_checkpoint(
-        model=model,
-        checkpoint_path=args.model_path,
-        device=device,
-    )
-    
-    print(
-        f"Best model loaded from epoch "
-        f"{best_model_checkpoint['epoch']:02d} "
-        f"with validation loss: "
-        f"{best_model_checkpoint['validation_loss']:.4f}"
-    )
-    
-    test_loss, test_accuracy = evaluate_model(
-        model=model,
-        dataloader=test_dataloader,
-        loss_fn=loss_fn,
-        device=device,
-    )
-    
-    print("\nFinal evaluation on the test set:")
-    print(f"Test Loss: {test_loss:.4f} | Test Accuracy: {test_accuracy:.4f}")
     
     # These will be used when validation and testing
     # are added to the training pipeline.
