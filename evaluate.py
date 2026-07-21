@@ -20,6 +20,8 @@ from src.evalutation_utils import (
 from src.model import ProteinClassifier
 from src.utils import set_random_seed
 
+from sklearn.metrics import classification_report, confusion_matrix
+
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -185,6 +187,29 @@ def create_model_from_checkpoint(
 
     return model.to(device)
 
+def collect_predictions(
+    model: nn.Module,
+    dataloader: DataLoader,
+    device: torch.device
+) -> tuple[list[int], list[int]]:
+    
+    model.eval()
+    all_predictions = []
+    all_true_labels = []
+    
+    with torch.no_grad():
+        for sequences, sequence_lengths, labels in dataloader:
+            sequences = sequences.to(device)
+            sequence_lengths = sequence_lengths.to(device)
+            labels = labels.to(device)
+
+            logits = model(sequences, sequence_lengths)
+            predictions = torch.argmax(logits, dim=1)
+
+            all_predictions.extend(predictions.cpu().numpy())
+            all_true_labels.extend(labels.cpu().numpy())
+            
+    return all_predictions, all_true_labels
 
 def main() -> None:
     args = parse_arguments()
@@ -282,7 +307,38 @@ def main() -> None:
     print("\nFinal evaluation on the test set:")
     print(f"Test Loss: {test_loss:.4f}")
     print(f"Test Accuracy: {test_accuracy:.4f}")
-
+    
+    true_labels, predicted_labels = collect_predictions(
+        model=model,
+        dataloader=test_dataloader,
+        device=device
+    )
+    
+    class_names = [
+        label 
+        for label, index in sorted(
+            saved_label_to_index.items(),
+            key=lambda item: item[1]
+        )
+    ]
+    
+    print("\nClassification Report:")
+    print(classification_report(
+        true_labels,
+        predicted_labels,
+        target_names=class_names,
+        digits=4
+        )
+    )
+    
+    confusion_mat = confusion_matrix(
+        true_labels,
+        predicted_labels,
+        labels=list(range(len(class_names)))
+    )
+    
+    print("\nConfusion Matrix:")
+    print(confusion_mat)
 
 if __name__ == "__main__":
     main()
