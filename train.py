@@ -616,9 +616,8 @@ def main() -> None:
         device,
     )
 
-    # --------------------------------------------------
+
     # Load raw sequences and prepare labels.
-    # --------------------------------------------------
 
     (
         sequences,
@@ -639,9 +638,9 @@ def main() -> None:
     )
     print(f"Label mapping: {label_to_index}")
 
-    # --------------------------------------------------
+    
     # Split the raw sequences and labels.
-    # --------------------------------------------------
+    # -------------------------------------------------
 
     (
         train_sequences,
@@ -659,10 +658,9 @@ def main() -> None:
         test_fraction=args.test_fraction,
         random_seed=args.random_seed,
     )
-
-    # --------------------------------------------------
+   
     # Create Dataset objects.
-    # --------------------------------------------------
+   
 
     (
         train_dataset,
@@ -692,9 +690,9 @@ def main() -> None:
         f"{len(test_dataset)}"
     )
 
-    # --------------------------------------------------
+   
     # Create DataLoaders.
-    # --------------------------------------------------
+    
 
     (
         train_dataloader,
@@ -707,9 +705,9 @@ def main() -> None:
         batch_size=args.batch_size,
     )
 
-    # --------------------------------------------------
+    
     # Create the model.
-    # --------------------------------------------------
+    
 
     model = create_model(
         vocab_size=len(vocab),
@@ -722,9 +720,9 @@ def main() -> None:
     print("\nModel architecture:")
     print(model)
 
-    # --------------------------------------------------
+    
     # Create loss function and optimizer.
-    # --------------------------------------------------
+    
 
     loss_fn = nn.CrossEntropyLoss()
 
@@ -733,9 +731,9 @@ def main() -> None:
         lr=args.learning_rate,
     )
 
-    # --------------------------------------------------
+    
     # Train.
-    # --------------------------------------------------
+    
 
     print("\nStarting training...\n")
     
