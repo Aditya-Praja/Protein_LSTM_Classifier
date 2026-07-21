@@ -1,5 +1,6 @@
 from torch import nn 
 import torch
+from torch.nn.utils.rnn import pack_padded_sequence
 
 class ProteinClassifier(nn.Module):
     def __init__(
@@ -25,13 +26,21 @@ class ProteinClassifier(nn.Module):
         
     def forward(
         self,
-        sequences: torch.Tensor
+        sequences: torch.Tensor,
+        sequence_lengths: torch.Tensor
     ) -> torch.Tensor:
         
         embedded_sequences = self.embedding(sequences)
         
+        packed_sequences = pack_padded_sequence(
+            embedded_sequences,
+            lengths=sequence_lengths.cpu(),
+            batch_first=True,
+            enforce_sorted=False
+        )
+        
         lstm_output, (hidden_state, cell_state) = self.lstm(
-            embedded_sequences
+            packed_sequences
         )
         
         return hidden_state
