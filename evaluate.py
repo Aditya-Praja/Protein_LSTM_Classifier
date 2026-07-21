@@ -20,7 +20,13 @@ from src.evalutation_utils import (
 from src.model import ProteinClassifier
 from src.utils import set_random_seed
 
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+)
+
+import matplotlib.pyplot as plt
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -68,6 +74,13 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         default=42,
         help="Random seed used to recreate the original split.",
+        )
+
+    parser.add_argument(
+        "--confusion-matrix-path",
+        type=str,
+        default="results/confusion_matrix.png",
+        help="Path used to save the confusion matrix.",
     )
 
     return parser.parse_args()
@@ -211,6 +224,43 @@ def collect_predictions(
             
     return all_predictions, all_true_labels
 
+def plot_confusion_matrix(
+    true_labels: list[int],
+    predicted_labels: list[int],
+    class_names: list[str],
+    output_path: str = "confusion_matrix.png"
+) -> None:
+    
+    label_indices = list(range(len(class_names)))
+    
+    confusion_mat = confusion_matrix(
+        true_labels,
+        predicted_labels,
+        labels=label_indices
+    )
+    
+    disp = ConfusionMatrixDisplay(
+        confusion_matrix=confusion_mat,
+        display_labels=class_names
+    )
+    
+    disp.plot(
+        values_format='d',
+    )
+    
+    plt.title("Confusion Matrix")
+    
+    plt.xticks(rotation=45)
+    
+    plt.tight_layout()
+    
+    output_file = Path(output_path)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_file)
+    plt.close()
+    
+    print(f"Confusion matrix saved to: {output_file.resolve()}")
+
 def main() -> None:
     args = parse_arguments()
 
@@ -335,6 +385,13 @@ def main() -> None:
         true_labels,
         predicted_labels,
         labels=list(range(len(class_names)))
+    )
+    
+    plot_confusion_matrix(
+        true_labels=true_labels,
+        predicted_labels=predicted_labels,
+        class_names=class_names,
+        output_path=args.confusion_matrix_path
     )
     
     print("\nConfusion Matrix:")
