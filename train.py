@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 import torch
 from sklearn.model_selection import train_test_split
@@ -526,6 +527,100 @@ def save_checkpoint(
         path,
     )
     
+def plot_loss_history(
+    train_losses: list[float],
+    validation_losses: list[float],
+    output_path: str,
+) -> None:
+    
+    if len(train_losses) != len(validation_losses):
+        raise ValueError(
+            "The lengths of train_losses and validation_losses "
+            "must be the same."
+        )
+        
+    epochs = range(1, len(train_losses) + 1)
+    
+    plt.figure()
+    
+    plt.plot(
+        epochs,
+        train_losses,
+        label="Training Loss",
+    )
+    
+    plt.plot(
+        epochs,
+        validation_losses,
+        label="Validation Loss",
+    )
+    
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    
+    path = Path(output_path)
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    
+    plt.savefig(path)
+    
+    plt.close()
+    
+    print(f"Loss history plot saved to: {path.resolve()}")
+    
+def plot_accuracy_history(
+    train_accuracies: list[float],
+    validation_accuracies: list[float],
+    output_path: str,
+) -> None:
+    
+    if len(train_accuracies) != len(validation_accuracies):
+        raise ValueError(
+            "The lengths of train_accuracies and validation_accuracies "
+            "must be the same."
+        )
+        
+    epochs = range(1, len(train_accuracies) + 1)
+    
+    plt.figure()
+    
+    plt.plot(
+        epochs,
+        train_accuracies,
+        label="Training Accuracy",
+    )
+    
+    plt.plot(
+        epochs,
+        validation_accuracies,
+        label="Validation Accuracy",
+    )
+    
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.title("Training and Validation Accuracy")
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    
+    path = Path(output_path)
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    
+    plt.savefig(path)
+    
+    plt.close()
+    
+    print(f"Accuracy history plot saved to: {path.resolve()}")
+    
 def main() -> None:
     args = parse_arguments()
 
@@ -655,6 +750,12 @@ def main() -> None:
     print("\nStarting training...\n")
     
     best_validation_loss = float("inf")
+    
+    train_losses = []
+    validation_losses = []
+    
+    train_accuracies = []
+    validation_accuracies = []
 
     for epoch in range(args.epochs):
         train_loss, train_accuracy = train_one_epoch(
@@ -671,6 +772,11 @@ def main() -> None:
             loss_fn=loss_fn,
             device=device,
         )
+        
+        train_losses.append(train_loss)
+        validation_losses.append(validation_loss)
+        train_accuracies.append(train_accuracy)
+        validation_accuracies.append(validation_accuracy)
 
         print(
             f"Epoch {epoch + 1:02d}/"
@@ -708,6 +814,18 @@ def main() -> None:
             
     print("\nTraining complete.")
     print(f"Best validation loss: {best_validation_loss:.4f}")
+    
+    plot_loss_history(
+        train_losses=train_losses,
+        validation_losses=validation_losses,
+        output_path="results/loss_history.png",
+    )
+    
+    plot_accuracy_history(
+        train_accuracies=train_accuracies,
+        validation_accuracies=validation_accuracies,
+        output_path="results/accuracy_history.png",
+    )
     
     # These will be used when validation and testing
     # are added to the training pipeline.

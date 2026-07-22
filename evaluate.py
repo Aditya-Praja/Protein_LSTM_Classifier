@@ -1,6 +1,8 @@
 import argparse
 from pathlib import Path
+import json
 
+from dateutil import parser
 import torch
 from sklearn.model_selection import train_test_split
 from torch import nn
@@ -81,6 +83,20 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         default="results/confusion_matrix.png",
         help="Path used to save the confusion matrix.",
+    )
+    
+    parser.add_argument(
+        "--metrics-path",
+        type=str,
+        default="results/test_metrics.json",
+        help="Path used to save test metrics.",
+    )
+
+    parser.add_argument(
+        "--classification-report-path",
+        type=str,
+        default="results/classification_report.txt",
+        help="Path used to save the classification report.",
     )
 
     return parser.parse_args()
@@ -260,6 +276,19 @@ def plot_confusion_matrix(
     plt.close()
     
     print(f"Confusion matrix saved to: {output_file.resolve()}")
+    
+def save_classification_report(
+    report: str,
+    output_path: str = "classification_report.txt"
+) -> None:
+    
+    path = Path(output_path)
+    
+    path.parent.mkdir(parents=True, exist_ok=True)
+    
+    path.write_text(report, encoding='utf-8')
+    
+    print(f"Classification report saved to: {path.resolve()}")
 
 def main() -> None:
     args = parse_arguments()
@@ -372,13 +401,19 @@ def main() -> None:
         )
     ]
     
-    print("\nClassification Report:")
-    print(classification_report(
+    report = classification_report(
         true_labels,
         predicted_labels,
         target_names=class_names,
         digits=4
-        )
+    )
+    
+    print("\nClassification Report:")
+    print(report)
+    
+    save_classification_report(
+        report=report,
+        output_path=args.classification_report_path
     )
     
     confusion_mat = confusion_matrix(
